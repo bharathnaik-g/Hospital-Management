@@ -9,11 +9,11 @@ app.use(cors());
 app.use(express.json());
 
 // --------------------------------------------------
-// Detect correct C executable (Linux on Render / Windows local)
+// Detect correct C executable (Linux on Render / Windows locally)
 // --------------------------------------------------
-let exePath = path.join(__dirname, "triage"); // Linux
+let exePath = path.join(__dirname, "triage"); // Linux executable
 if (fs.existsSync(path.join(__dirname, "triage.exe"))) {
-  exePath = path.join(__dirname, "triage.exe"); // Windows
+  exePath = path.join(__dirname, "triage.exe"); // Windows executable
 }
 
 // --------------------------------------------------
@@ -44,7 +44,7 @@ function parsePatients(data) {
 
 // Get all patients
 app.get("/patients", (req, res) => {
-  exec(`${exePath} list`, (err, stdout) => {
+  exec(`"${exePath}" list`, (err, stdout) => {
     if (err) return res.status(500).json({ error: "C backend error" });
     return res.json(parsePatients(stdout));
   });
@@ -53,7 +53,7 @@ app.get("/patients", (req, res) => {
 // Add patient
 app.post("/addPatient", (req, res) => {
   const { id, name, age, severity } = req.body;
-  exec(`${exePath} add ${id} "${name}" ${age} ${severity}`, (err) => {
+  exec(`"${exePath}" add ${id} "${name}" ${age} ${severity}`, err => {
     if (err) return res.status(500).json({ error: "Add failed" });
     return res.json({ ok: true });
   });
@@ -62,7 +62,7 @@ app.post("/addPatient", (req, res) => {
 // Update severity
 app.put("/updatePatient", (req, res) => {
   const { id, severity } = req.body;
-  exec(`${exePath} update ${id} ${severity}`, (err) => {
+  exec(`"${exePath}" update ${id} ${severity}`, err => {
     if (err) return res.status(500).json({ error: "Update failed" });
     return res.json({ ok: true });
   });
@@ -71,19 +71,20 @@ app.put("/updatePatient", (req, res) => {
 // Delete patient
 app.delete("/deletePatient/:id", (req, res) => {
   const id = req.params.id;
-  exec(`${exePath} delete ${id}`, (err) => {
+  exec(`"${exePath}" delete ${id}`, err => {
     if (err) return res.status(500).json({ error: "Delete failed" });
     return res.json({ ok: true });
   });
 });
 
 // --------------------------------------------------
-// Serve frontend (correct path)
+// Serve Frontend
 // --------------------------------------------------
 const publicPath = path.join(__dirname, "public");
 app.use(express.static(publicPath));
 
-// Fallback for SPA (fixed for Express 5)
+// SPA fallback (Express 5 FIX)
+// Matches everything EXCEPT actual files
 app.get("/(.*)", (req, res) => {
   res.sendFile(path.join(publicPath, "index.html"));
 });
