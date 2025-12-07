@@ -8,17 +8,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --------------------------------------------------
-// Detect correct C executable (Linux on Render / Windows locally)
-// --------------------------------------------------
-let exePath = path.join(__dirname, "triage"); // Linux executable
+// Detect executable
+let exePath = path.join(__dirname, "triage");
 if (fs.existsSync(path.join(__dirname, "triage.exe"))) {
-  exePath = path.join(__dirname, "triage.exe"); // Windows executable
+  exePath = path.join(__dirname, "triage.exe");
 }
 
-// --------------------------------------------------
-// Convert C output → JSON
-// --------------------------------------------------
+// Parse C output
 function parsePatients(data) {
   const lines = data.trim().split("\n");
   const patients = [];
@@ -38,11 +34,7 @@ function parsePatients(data) {
   return patients;
 }
 
-// --------------------------------------------------
 // API ENDPOINTS
-// --------------------------------------------------
-
-// Get all patients
 app.get("/patients", (req, res) => {
   exec(`"${exePath}" list`, (err, stdout) => {
     if (err) return res.status(500).json({ error: "C backend error" });
@@ -50,7 +42,6 @@ app.get("/patients", (req, res) => {
   });
 });
 
-// Add patient
 app.post("/addPatient", (req, res) => {
   const { id, name, age, severity } = req.body;
   exec(`"${exePath}" add ${id} "${name}" ${age} ${severity}`, err => {
@@ -59,7 +50,6 @@ app.post("/addPatient", (req, res) => {
   });
 });
 
-// Update severity
 app.put("/updatePatient", (req, res) => {
   const { id, severity } = req.body;
   exec(`"${exePath}" update ${id} ${severity}`, err => {
@@ -68,7 +58,6 @@ app.put("/updatePatient", (req, res) => {
   });
 });
 
-// Delete patient
 app.delete("/deletePatient/:id", (req, res) => {
   const id = req.params.id;
   exec(`"${exePath}" delete ${id}`, err => {
@@ -77,22 +66,18 @@ app.delete("/deletePatient/:id", (req, res) => {
   });
 });
 
-// --------------------------------------------------
-// Serve Frontend
-// --------------------------------------------------
+// Serve frontend
 const publicPath = path.join(__dirname, "public");
 app.use(express.static(publicPath));
 
-// SPA fallback (Express 5 FIX)
-// Matches everything EXCEPT actual files
-app.get("/(.*)", (req, res) => {
+// SPA fallback (Express 4)
+app.get("*", (req, res) => {
   res.sendFile(path.join(publicPath, "index.html"));
 });
 
-// --------------------------------------------------
-// Start Server
-// --------------------------------------------------
+// Start server
 const port = process.env.PORT || 5000;
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+
