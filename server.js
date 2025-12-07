@@ -46,7 +46,9 @@ app.post("/addPatient", (req, res) => {
   const { id, name, age, severity } = req.body;
   if (!id || !name || !age || !severity) return res.status(400).json({ error: "Missing fields" });
 
-  const child = spawn(exePath, ["add", String(id), name, String(age), String(severity)], { shell: false });
+  // Use shell:true and quote name to preserve spaces
+  const cmd = `"${exePath}" add ${id} "${name}" ${age} ${severity}`;
+  const child = spawn(cmd, { shell: true });
 
   let stderr = "";
   child.stderr.on("data", data => { stderr += data.toString(); });
@@ -112,4 +114,3 @@ const port = process.env.PORT || 5000;
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
-
