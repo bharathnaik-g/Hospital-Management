@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const { exec } = require("child_process");
 const path = require("path");
+const fs = require("fs");
 
 const app = express();
 app.use(cors());
@@ -10,9 +11,11 @@ app.use(express.json());
 // ---------------------------
 // Path to C backend executable
 // ---------------------------
-// On Windows: "triage.exe"
-// On Linux/Mac: "triage" (make sure it is compiled)
-const exePath = path.join(__dirname, "triage.exe");
+// Automatically choose Windows vs Linux
+let exePath = path.join(__dirname, "triage");
+if (fs.existsSync(path.join(__dirname, "triage.exe"))) {
+  exePath = path.join(__dirname, "triage.exe");
+}
 
 // ---------------------------
 // Utility: Convert C output → JSON
@@ -79,11 +82,12 @@ app.delete("/deletePatient/:id", (req, res) => {
 // ---------------------------
 // Serve frontend
 // ---------------------------
-app.use(express.static(path.join(__dirname, "hospital-triage", "public")));
+const publicPath = path.join(__dirname, "hospital-triage", "public");
+app.use(express.static(publicPath));
 
-// Catch-all route for SPA
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "hospital-triage", "public", "index.html"));
+// Catch-all route for SPA (Express 5 compatible)
+app.get("/:catchAll(.*)", (req, res) => {
+  res.sendFile(path.join(publicPath, "index.html"));
 });
 
 // ---------------------------
@@ -93,4 +97,3 @@ const port = process.env.PORT || 5000;
 app.listen(port, () => {
   console.log(`Backend running at http://localhost:${port}`);
 });
-
