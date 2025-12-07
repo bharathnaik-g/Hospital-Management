@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { spawn, exec } = require("child_process");
+const { exec } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 
@@ -41,20 +41,17 @@ app.get("/patients", (req, res) => {
   });
 });
 
-// ADD patient
+// ---------------------------
+// ADD patient (fixed for multi-word names)
+// ---------------------------
 app.post("/addPatient", (req, res) => {
   const { id, name, age, severity } = req.body;
   if (!id || !name || !age || !severity) return res.status(400).json({ error: "Missing fields" });
 
-  // Use shell:true and quote name to preserve spaces
+  // Use exec instead of spawn to correctly handle multi-word names
   const cmd = `"${exePath}" add ${id} "${name}" ${age} ${severity}`;
-  const child = spawn(cmd, { shell: true });
-
-  let stderr = "";
-  child.stderr.on("data", data => { stderr += data.toString(); });
-
-  child.on("close", code => {
-    if (code !== 0) {
+  exec(cmd, (err, stdout, stderr) => {
+    if (err) {
       console.error("ADD ERROR:", stderr);
       return res.status(500).json({ error: "Add failed", details: stderr });
     }
@@ -67,13 +64,9 @@ app.put("/updatePatient", (req, res) => {
   const { id, severity } = req.body;
   if (!id || !severity) return res.status(400).json({ error: "Missing ID or Severity" });
 
-  const child = spawn(exePath, ["update", String(id), String(severity)], { shell: false });
-
-  let stderr = "";
-  child.stderr.on("data", data => { stderr += data.toString(); });
-
-  child.on("close", code => {
-    if (code !== 0) {
+  const cmd = `"${exePath}" update ${id} ${severity}`;
+  exec(cmd, (err, stdout, stderr) => {
+    if (err) {
       console.error("UPDATE ERROR:", stderr);
       return res.status(500).json({ error: "Update failed", details: stderr });
     }
@@ -86,13 +79,9 @@ app.delete("/deletePatient/:id", (req, res) => {
   const id = req.params.id;
   if (!id) return res.status(400).json({ error: "Missing ID" });
 
-  const child = spawn(exePath, ["delete", String(id)], { shell: false });
-
-  let stderr = "";
-  child.stderr.on("data", data => { stderr += data.toString(); });
-
-  child.on("close", code => {
-    if (code !== 0) {
+  const cmd = `"${exePath}" delete ${id}`;
+  exec(cmd, (err, stdout, stderr) => {
+    if (err) {
       console.error("DELETE ERROR:", stderr);
       return res.status(500).json({ error: "Delete failed", details: stderr });
     }
