@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { exec } = require("child_process");
+const { exec, spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 
@@ -8,17 +8,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --------------------------------------------------
-// Detect correct C executable (Linux on Render / Windows locally)
-// --------------------------------------------------
+// Detect correct C executable
 let exePath = path.join(__dirname, "triage"); // Linux
 if (fs.existsSync(path.join(__dirname, "triage.exe"))) {
   exePath = path.join(__dirname, "triage.exe"); // Windows
 }
-
-// --------------------------------------------------
-// API ENDPOINTS
-// --------------------------------------------------
 
 // GET all patients
 app.get("/patients", (req, res) => {
@@ -29,14 +23,21 @@ app.get("/patients", (req, res) => {
     }
 
     try {
-      const json = JSON.parse(stdout);
+      console.log("RAW OUTPUT:", stdout);
+      const match = stdout.match(/\[.*\]/s); // extract JSON
+      if (!match) return res.status(500).json({ error: "JSON not found", raw: stdout });
+
+      const json = JSON.parse(match[0]).map(p => ({
+        id: p.id,
+        name: p.name || p.username || "Unknown",
+        age: p.age,
+        severity: p.severity
+      }));
+
       return res.json(json);
     } catch (e) {
       console.error("JSON Parse Error:", stdout);
-      return res.status(500).json({
-        error: "JSON parse failed",
-        raw: stdout
-      });
+      return res.status(500).json({ error: "JSON parse failed", raw: stdout });
     }
   });
 });
@@ -45,10 +46,15 @@ app.get("/patients", (req, res) => {
 app.post("/addPatient", (req, res) => {
   const { id, name, age, severity } = req.body;
 
-  exec(`"${exePath}" add ${id} "${name}" ${age} ${severity}`, (err) => {
-    if (err) {
-      console.error("ADD ERROR:", err);
-      return res.status(500).json({ error: "Add failed" });
+  const child = spawn(exePath, ["add", String(id), name, String(age), String(severity)]);
+
+  let stderr = "";
+  child.stderr.on("data", data => { stderr += data.toString(); });
+
+  child.on("close", code => {
+    if (code !== 0) {
+      console.error("ADD ERROR:", stderr);
+      return res.status(500).json({ error: "Add failed", details: stderr });
     }
     return res.json({ ok: true });
   });
@@ -58,10 +64,15 @@ app.post("/addPatient", (req, res) => {
 app.put("/updatePatient", (req, res) => {
   const { id, severity } = req.body;
 
-  exec(`"${exePath}" update ${id} ${severity}`, (err) => {
-    if (err) {
-      console.error("UPDATE ERROR:", err);
-      return res.status(500).json({ error: "Update failed" });
+  const child = spawn(exePath, ["update", String(id), String(severity)]);
+
+  let stderr = "";
+  child.stderr.on("data", data => { stderr += data.toString(); });
+
+  child.on("close", code => {
+    if (code !== 0) {
+      console.error("UPDATE ERROR:", stderr);
+      return res.status(500).json({ error: "Update failed", details: stderr });
     }
     return res.json({ ok: true });
   });
@@ -71,31 +82,31 @@ app.put("/updatePatient", (req, res) => {
 app.delete("/deletePatient/:id", (req, res) => {
   const id = req.params.id;
 
-  exec(`"${exePath}" delete ${id}`, (err) => {
-    if (err) {
-      console.error("DELETE ERROR:", err);
-      return res.status(500).json({ error: "Delete failed" });
+  const child = spawn(exePath, ["delete", String(id)]);
+
+  let stderr = "";
+  child.stderr.on("data", data => { stderr += data.toString(); });
+
+  child.on("close", code => {
+    if (code !== 0) {
+      console.error("DELETE ERROR:", stderr);
+      return res.status(500).json({ error: "Delete failed", details: stderr });
     }
     return res.json({ ok: true });
   });
 });
 
-// --------------------------------------------------
-// Serve Frontend (public folder)
-// --------------------------------------------------
+// Serve Frontend
 const publicPath = path.join(__dirname, "public");
 app.use(express.static(publicPath));
 
-// SPA Fallback (works on Render)
+// SPA Fallback
 app.get("*", (req, res) => {
   res.sendFile(path.join(publicPath, "index.html"));
 });
 
-// --------------------------------------------------
 // Start Server
-// --------------------------------------------------
 const port = process.env.PORT || 5000;
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
-
