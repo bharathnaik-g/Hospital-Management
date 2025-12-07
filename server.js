@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { exec, spawn } = require("child_process");
+const { spawn, exec } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 
@@ -23,13 +23,12 @@ app.get("/patients", (req, res) => {
     }
 
     try {
-      console.log("RAW OUTPUT:", stdout);
       const match = stdout.match(/\[.*\]/s); // extract JSON
       if (!match) return res.status(500).json({ error: "JSON not found", raw: stdout });
 
       const json = JSON.parse(match[0]).map(p => ({
         id: p.id,
-        name: p.name || p.username || "Unknown",
+        name: p.name || "Unknown",
         age: p.age,
         severity: p.severity
       }));
@@ -45,8 +44,9 @@ app.get("/patients", (req, res) => {
 // ADD patient
 app.post("/addPatient", (req, res) => {
   const { id, name, age, severity } = req.body;
+  if (!id || !name || !age || !severity) return res.status(400).json({ error: "Missing fields" });
 
-  const child = spawn(exePath, ["add", String(id), name, String(age), String(severity)]);
+  const child = spawn(exePath, ["add", String(id), name, String(age), String(severity)], { shell: false });
 
   let stderr = "";
   child.stderr.on("data", data => { stderr += data.toString(); });
@@ -63,8 +63,9 @@ app.post("/addPatient", (req, res) => {
 // UPDATE severity
 app.put("/updatePatient", (req, res) => {
   const { id, severity } = req.body;
+  if (!id || !severity) return res.status(400).json({ error: "Missing ID or Severity" });
 
-  const child = spawn(exePath, ["update", String(id), String(severity)]);
+  const child = spawn(exePath, ["update", String(id), String(severity)], { shell: false });
 
   let stderr = "";
   child.stderr.on("data", data => { stderr += data.toString(); });
@@ -81,8 +82,9 @@ app.put("/updatePatient", (req, res) => {
 // DELETE patient
 app.delete("/deletePatient/:id", (req, res) => {
   const id = req.params.id;
+  if (!id) return res.status(400).json({ error: "Missing ID" });
 
-  const child = spawn(exePath, ["delete", String(id)]);
+  const child = spawn(exePath, ["delete", String(id)], { shell: false });
 
   let stderr = "";
   child.stderr.on("data", data => { stderr += data.toString(); });
@@ -110,3 +112,4 @@ const port = process.env.PORT || 5000;
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+
