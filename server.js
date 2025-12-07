@@ -12,9 +12,9 @@ app.use(express.json());
 // Path to C backend executable
 // ---------------------------
 // Automatically choose Windows vs Linux
-let exePath = path.join(__dirname, "triage");
+let exePath = path.join(__dirname, "triage"); // Linux / Render
 if (fs.existsSync(path.join(__dirname, "triage.exe"))) {
-  exePath = path.join(__dirname, "triage.exe");
+  exePath = path.join(__dirname, "triage.exe"); // Local Windows
 }
 
 // ---------------------------
@@ -25,7 +25,6 @@ function parsePatients(data) {
   const patients = [];
 
   lines.forEach(line => {
-    // Expected C output format: id name age severity
     const parts = line.trim().split(" ");
     if (parts.length >= 4) {
       patients.push({
@@ -86,7 +85,7 @@ const publicPath = path.join(__dirname, "hospital-triage", "public");
 app.use(express.static(publicPath));
 
 // Catch-all route for SPA (Express 5 compatible)
-app.get("/:catchAll(.*)", (req, res) => {
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(publicPath, "index.html"));
 });
 
