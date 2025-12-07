@@ -7,7 +7,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Path to triage.exe inside Backend folder
+// ---------------------------
+// Path to C backend executable
+// ---------------------------
+// On Windows: "triage.exe"
+// On Linux/Mac: "triage" (make sure it is compiled)
 const exePath = path.join(__dirname, "triage.exe");
 
 // ---------------------------
@@ -18,8 +22,7 @@ function parsePatients(data) {
   const patients = [];
 
   lines.forEach(line => {
-    // Expected C output format:
-    // id name age severity
+    // Expected C output format: id name age severity
     const parts = line.trim().split(" ");
     if (parts.length >= 4) {
       patients.push({
@@ -35,8 +38,10 @@ function parsePatients(data) {
 }
 
 // ---------------------------
-// GET ALL PATIENTS
+// API ENDPOINTS
 // ---------------------------
+
+// Get all patients
 app.get("/patients", (req, res) => {
   exec(`"${exePath}" list`, (err, stdout) => {
     if (err) return res.status(500).json({ error: "C backend error" });
@@ -44,36 +49,27 @@ app.get("/patients", (req, res) => {
   });
 });
 
-// ---------------------------
-// ADD PATIENT
-// ---------------------------
+// Add patient
 app.post("/addPatient", (req, res) => {
   const { id, name, age, severity } = req.body;
-
   exec(`"${exePath}" add ${id} "${name}" ${age} ${severity}`, (err) => {
     if (err) return res.status(500).json({ error: "Add failed" });
     return res.json({ ok: true });
   });
 });
 
-// ---------------------------
-// UPDATE PATIENT SEVERITY
-// ---------------------------
+// Update patient severity
 app.put("/updatePatient", (req, res) => {
   const { id, severity } = req.body;
-
   exec(`"${exePath}" update ${id} ${severity}`, (err) => {
     if (err) return res.status(500).json({ error: "Update failed" });
     return res.json({ ok: true });
   });
 });
 
-// ---------------------------
-// DELETE PATIENT
-// ---------------------------
+// Delete patient
 app.delete("/deletePatient/:id", (req, res) => {
   const id = req.params.id;
-
   exec(`"${exePath}" delete ${id}`, (err) => {
     if (err) return res.status(500).json({ error: "Delete failed" });
     return res.json({ ok: true });
@@ -81,8 +77,20 @@ app.delete("/deletePatient/:id", (req, res) => {
 });
 
 // ---------------------------
+// Serve frontend
+// ---------------------------
+app.use(express.static(path.join(__dirname, "hospital-triage", "public")));
+
+// Catch-all route for SPA
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "hospital-triage", "public", "index.html"));
+});
+
+// ---------------------------
 // START SERVER
 // ---------------------------
-app.listen(5000, () => {
-  console.log("Backend running at http://localhost:5000");
+const port = process.env.PORT || 5000;
+app.listen(port, () => {
+  console.log(`Backend running at http://localhost:${port}`);
 });
+
