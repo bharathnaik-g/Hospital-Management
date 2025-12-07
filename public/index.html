@@ -178,9 +178,9 @@
     <div class="footer">© VizStruct 2025 – Data Structures Visualization Expo — Bharath — Guruprasad</div>
   </main>
 
-  <script>
-  // your existing JS code remains unchanged
-  const API = 'http://localhost:5000';
+ <script>
+  // Use your Render backend URL
+  const API = 'https://hospital-management-1-2e3d.onrender.com';
   let patients = [];
 
   async function fetchPatients() {
@@ -291,7 +291,7 @@
 
   fetchPatients();
   setInterval(fetchPatients, 5000);
-  </script>
+</script>
 
 </body>
 </html>
