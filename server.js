@@ -83,8 +83,8 @@ app.delete("/deletePatient/:id", (req, res) => {
 const publicPath = path.join(__dirname, "public");
 app.use(express.static(publicPath));
 
-// Fallback for Single Page App
-app.get("*", (req, res) => {
+// Fallback for SPA (fixed for Express 5)
+app.get("/(.*)", (req, res) => {
   res.sendFile(path.join(publicPath, "index.html"));
 });
 
